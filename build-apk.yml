@@ -1,0 +1,49 @@
+name: Build Drishti Vaani APK
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Ensure debug keystore exists
+        run: |
+          if [ ! -f "debug.keystore" ]; then
+            echo "Generating debug.keystore for CI..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Ensure gradlew executable
+        run: |
+          chmod +x gradlew
+          ls -la gradle/wrapper/
+
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drishti-vaani-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
